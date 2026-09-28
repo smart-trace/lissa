@@ -239,6 +239,15 @@ public class Evaluation {
      * @return Set of identified trace links
      */
     public Set<TraceLink> run() {
+        return run(true);
+    }
+
+    /** Runs the analysis without writing result files (CSV or statistics). The cache is still flushed. */
+    public Set<TraceLink> runWithoutResultFiles() {
+        return run(false);
+    }
+
+    private Set<TraceLink> run(boolean writeResultFiles) {
         initializeSourceAndTargetStores();
 
         logger.info("Classifying Tracelinks");
@@ -248,16 +257,18 @@ public class Evaluation {
         logger.info("Postprocessing Tracelinks");
         traceLinks = traceLinkIdPostProcessor.postprocess(traceLinks);
 
-        logger.info("Evaluating Results");
-        String configFileName;
-        if (configFile != null) {
-            configFileName = configFile.toFile().getName();
-        } else {
-            configFileName = "in_memory_configuration.json";
+        if (writeResultFiles) {
+            logger.info("Evaluating Results");
+            String configFileName;
+            if (configFile != null) {
+                configFileName = configFile.toFile().getName();
+            } else {
+                configFileName = "in_memory_configuration.json";
+            }
+            Statistics.generateStatistics(
+                    traceLinks, configFileName, configuration, getSourceArtifactCount(), getTargetArtifactCount());
+            Statistics.saveTraceLinks(traceLinks, configFileName, configuration);
         }
-        Statistics.generateStatistics(
-                traceLinks, configFileName, configuration, getSourceArtifactCount(), getTargetArtifactCount());
-        Statistics.saveTraceLinks(traceLinks, configFileName, configuration);
         CacheManager.getDefaultInstance().flush();
 
         return traceLinks;
