@@ -16,6 +16,7 @@ import java.util.concurrent.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.kit.kastel.sdq.lissa.ratlr.cache.CacheUsage;
 import edu.kit.kastel.sdq.lissa.ratlr.configuration.ModuleConfiguration;
 import edu.kit.kastel.sdq.lissa.ratlr.context.ContextStore;
 import edu.kit.kastel.sdq.lissa.ratlr.elementstore.SourceElementStore;
@@ -49,6 +50,8 @@ public abstract class Classifier {
      */
     protected final ContextStore contextStore;
 
+    protected final CacheUsage cacheUsage;
+
     /**
      * Creates a new classifier with the specified number of threads and context store.
      *
@@ -58,6 +61,7 @@ public abstract class Classifier {
     protected Classifier(int threads, ContextStore contextStore) {
         this.threads = Math.max(1, threads);
         this.contextStore = Objects.requireNonNull(contextStore);
+        this.cacheUsage = contextStore.getContext(CacheUsage.ID, CacheUsage.class);
     }
 
     /**

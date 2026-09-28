@@ -164,8 +164,12 @@ public class SimpleClassifier extends Classifier {
 
         String cachedResponse = cache.get(request, String.class);
         if (cachedResponse != null) {
+            if (cacheUsage != null) cacheUsage.classificationHit();
+            logger.debug(
+                    "Classification cache hit source={} target={}", source.getIdentifier(), target.getIdentifier());
             return cachedResponse;
         } else {
+            if (cacheUsage != null) cacheUsage.classificationMiss();
             logger.info(
                     "Classifying ({}): {} and {}",
                     provider.modelName(),

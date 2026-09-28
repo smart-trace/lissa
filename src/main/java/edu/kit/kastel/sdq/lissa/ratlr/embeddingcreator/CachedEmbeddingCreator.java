@@ -41,6 +41,7 @@ abstract class CachedEmbeddingCreator extends EmbeddingCreator {
     private static final Logger STATIC_LOGGER = LoggerFactory.getLogger(CachedEmbeddingCreator.class);
     protected final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final Cache<EmbeddingCacheKey> cache;
+    private final CacheUsage cacheUsage;
     private final EmbeddingModel embeddingModel;
     private final String rawNameOfModel;
     private final int threads;
@@ -58,6 +59,7 @@ abstract class CachedEmbeddingCreator extends EmbeddingCreator {
         super(contextStore);
         this.embeddingCacheParameter = new EmbeddingCacheParameter(model);
         this.cache = CacheManager.getDefaultInstance().getCache(this, embeddingCacheParameter);
+        this.cacheUsage = contextStore.getContext(CacheUsage.ID, CacheUsage.class);
         this.embeddingModel = Objects.requireNonNull(createEmbeddingModel(model, params));
         this.rawNameOfModel = model;
         this.threads = Math.max(1, threads);
@@ -175,7 +177,7 @@ abstract class CachedEmbeddingCreator extends EmbeddingCreator {
      * @param element The element to create an embedding for
      * @return The vector embedding of the element, either from cache or newly generated
      */
-    private static float[] calculateFinalEmbedding(
+    private float[] calculateFinalEmbedding(
             EmbeddingModel embeddingModel,
             Cache<EmbeddingCacheKey> cache,
             EmbeddingCacheParameter embeddingCacheParameter,
@@ -184,8 +186,11 @@ abstract class CachedEmbeddingCreator extends EmbeddingCreator {
         String elementContent = element.getContent();
         float[] cachedEmbedding = cache.get(elementContent, float[].class);
         if (cachedEmbedding != null) {
+            if (cacheUsage != null) cacheUsage.embeddingHit();
+            STATIC_LOGGER.debug("Embedding cache hit element={}", element.getIdentifier());
             return cachedEmbedding;
         } else {
+            if (cacheUsage != null) cacheUsage.embeddingMiss();
             STATIC_LOGGER.info("Calculating embedding for: {}", element.getIdentifier());
             try {
                 float[] embedding =

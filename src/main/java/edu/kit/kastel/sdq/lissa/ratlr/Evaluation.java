@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import edu.kit.kastel.sdq.lissa.ratlr.artifactprovider.ArtifactProvider;
 import edu.kit.kastel.sdq.lissa.ratlr.cache.CacheManager;
+import edu.kit.kastel.sdq.lissa.ratlr.cache.CacheUsage;
 import edu.kit.kastel.sdq.lissa.ratlr.classifier.Classifier;
 import edu.kit.kastel.sdq.lissa.ratlr.configuration.EvaluationConfiguration;
 import edu.kit.kastel.sdq.lissa.ratlr.configuration.EvaluationConfigurationBuilder;
@@ -66,6 +67,12 @@ public class Evaluation {
     private final @Nullable Path configFile;
 
     private final EvaluationConfiguration configuration;
+    private final CacheUsage cacheUsage = new CacheUsage();
+
+    /** Returns the cache lookups performed by this evaluation. */
+    public CacheUsage getCacheUsage() {
+        return cacheUsage;
+    }
 
     /** Provider for source artifacts */
     private ArtifactProvider sourceArtifactProvider;
@@ -201,6 +208,7 @@ public class Evaluation {
         CacheManager.setCacheDir(configuration.cacheDir());
 
         ContextStore contextStore = new ContextStore();
+        contextStore.createContext(cacheUsage);
 
         sourceArtifactProvider =
                 ArtifactProvider.createArtifactProvider(configuration.sourceArtifactProvider(), contextStore);
