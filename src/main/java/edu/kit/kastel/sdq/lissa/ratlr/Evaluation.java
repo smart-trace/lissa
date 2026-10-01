@@ -21,6 +21,7 @@ import edu.kit.kastel.sdq.lissa.ratlr.classifier.Classifier;
 import edu.kit.kastel.sdq.lissa.ratlr.configuration.EvaluationConfiguration;
 import edu.kit.kastel.sdq.lissa.ratlr.configuration.EvaluationConfigurationBuilder;
 import edu.kit.kastel.sdq.lissa.ratlr.configuration.ModuleConfiguration;
+import edu.kit.kastel.sdq.lissa.ratlr.configuration.ProviderConfiguration;
 import edu.kit.kastel.sdq.lissa.ratlr.context.ContextStore;
 import edu.kit.kastel.sdq.lissa.ratlr.elementstore.SourceElementStore;
 import edu.kit.kastel.sdq.lissa.ratlr.elementstore.TargetElementStore;
@@ -68,6 +69,7 @@ public class Evaluation {
 
     private final EvaluationConfiguration configuration;
     private final CacheUsage cacheUsage = new CacheUsage();
+    private CacheManager cacheManager;
 
     /** Returns the cache lookups performed by this evaluation. */
     public CacheUsage getCacheUsage() {
@@ -187,6 +189,16 @@ public class Evaluation {
         setup();
     }
 
+    /** Evalúa con proveedores y caché explícitos. El llamador conserva la propiedad de la caché. */
+    public Evaluation(EvaluationConfiguration config, ProviderConfiguration providers, CacheManager caches) {
+        this.configuration = Objects.requireNonNull(config);
+        this.configFile = null;
+        this.cacheManager = Objects.requireNonNull(caches);
+        ContextStore contextStore = new ContextStore();
+        contextStore.createContext(Objects.requireNonNull(providers));
+        setup(contextStore);
+    }
+
     /**
      * Sets up the evaluation pipeline components.
      * This method:
@@ -206,8 +218,12 @@ public class Evaluation {
      */
     private void setup() throws IOException {
         CacheManager.setCacheDir(configuration.cacheDir());
+        cacheManager = CacheManager.getDefaultInstance();
+        setup(new ContextStore());
+    }
 
-        ContextStore contextStore = new ContextStore();
+    private void setup(ContextStore contextStore) {
+        contextStore.createContext(cacheManager);
         contextStore.createContext(cacheUsage);
 
         sourceArtifactProvider =
@@ -277,7 +293,7 @@ public class Evaluation {
                     traceLinks, configFileName, configuration, getSourceArtifactCount(), getTargetArtifactCount());
             Statistics.saveTraceLinks(traceLinks, configFileName, configuration);
         }
-        CacheManager.getDefaultInstance().flush();
+        cacheManager.flush();
 
         return traceLinks;
     }

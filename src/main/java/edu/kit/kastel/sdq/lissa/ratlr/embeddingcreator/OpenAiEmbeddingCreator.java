@@ -1,9 +1,8 @@
-/* Licensed under MIT 2025. */
+/* Licensed under MIT 2025-2026. */
 package edu.kit.kastel.sdq.lissa.ratlr.embeddingcreator;
 
 import edu.kit.kastel.sdq.lissa.ratlr.configuration.ModuleConfiguration;
 import edu.kit.kastel.sdq.lissa.ratlr.context.ContextStore;
-import edu.kit.kastel.sdq.lissa.ratlr.utils.Environment;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
@@ -13,7 +12,7 @@ import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
  * This class provides integration with OpenAI's embedding API, supporting high-throughput
  * embedding generation through parallel processing.
  * <p>
- * Required environment variables:
+ * Valores requeridos de ProviderConfiguration (entorno solo en el modo autónomo):
  * <ul>
  *     <li>{@code OPENAI_ORGANIZATION_ID}: Your OpenAI organization ID</li>
  *     <li>{@code OPENAI_API_KEY}: Your OpenAI API key</li>
@@ -41,21 +40,17 @@ public class OpenAiEmbeddingCreator extends CachedEmbeddingCreator {
 
     /**
      * Creates an OpenAI embedding model instance with the specified parameters.
-     * The method requires both the organization ID and API key to be set in the
-     * environment variables.
+     * Usa el organization ID y la API key de la configuración de proveedores.
      *
      * @param model The name of the OpenAI model to use
      * @param params Additional parameters (not used in this implementation)
      * @return A configured OpenAI embedding model instance
-     * @throws IllegalStateException If either OPENAI_ORGANIZATION_ID or OPENAI_API_KEY environment variable is not set
+     * @throws IllegalArgumentException si falta OPENAI_ORGANIZATION_ID u OPENAI_API_KEY
      */
     @Override
     protected EmbeddingModel createEmbeddingModel(String model, String... params) {
-        String openAiOrganizationId = Environment.getenv("OPENAI_ORGANIZATION_ID");
-        String openAiApiKey = Environment.getenv("OPENAI_API_KEY");
-        if (openAiOrganizationId == null || openAiApiKey == null) {
-            throw new IllegalStateException("OPENAI_ORGANIZATION_ID or OPENAI_API_KEY environment variable not set");
-        }
+        String openAiOrganizationId = providers.require("OPENAI_ORGANIZATION_ID");
+        String openAiApiKey = providers.require("OPENAI_API_KEY");
         return new OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder()
                 .modelName(model)
                 .organizationId(openAiOrganizationId)

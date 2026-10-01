@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import edu.kit.kastel.sdq.lissa.ratlr.context.Context;
+import edu.kit.kastel.sdq.lissa.ratlr.context.ContextStore;
 import edu.kit.kastel.sdq.lissa.ratlr.utils.Environment;
 
 /**
@@ -24,8 +26,44 @@ import edu.kit.kastel.sdq.lissa.ratlr.utils.Environment;
  * This class provides a centralized way to create and access caches for different purposes,
  * such as storing embeddings or chat responses. It supports local file-based caching, Redis caching,
  * and Redis over a REST API, layered according to the {@code CACHE_HIERARCHY} environment variable.
+ * La fábrica {@link #redis(String)} configura Redis explícitamente sin consultar el entorno.
  */
-public final class CacheManager {
+public final class CacheManager implements Context, AutoCloseable {
+    public static final String ID = "cacheManager";
+    private @Nullable UnifiedRedisClient redis;
+
+    /** Crea una caché exclusivamente Redis, sin consultar el entorno ni tocar el disco. */
+    public static CacheManager redis(String url) {
+        return new CacheManager(RedisCache.createRedisConnection(Objects.requireNonNull(url)));
+    }
+
+    private CacheManager(UnifiedRedisClient redis) {
+        this.redis = redis;
+        this.directoryOfCaches = Path.of(DEFAULT_CACHE_DIRECTORY);
+        this.replacementStrategy = DEFAULT_REPLACEMENT_STRATEGY;
+        this.hierarchyConfig = List.of(CacheType.REDIS);
+    }
+
+    public static CacheManager from(ContextStore contextStore) {
+        var manager = contextStore.getContext(ID, CacheManager.class);
+        return manager == null ? getDefaultInstance() : manager;
+    }
+
+    @Override
+    public String getId() {
+        return ID;
+    }
+
+    /** El llamador cierra el gestor cuando terminan las evaluaciones que lo comparten. */
+    @Override
+    public void close() {
+        if (redis != null) {
+            redis.close();
+        } else {
+            flush();
+        }
+    }
+
     /**
      * The default directory name for storing cache files.
      */
@@ -207,6 +245,9 @@ public final class CacheManager {
      */
     private <K extends CacheKey> Cache<K> buildCacheHierarchy(String cacheName, CacheParameter<K> parameters) {
         ObjectMapper mapper = new ObjectMapper();
+        if (redis != null) {
+            return new RedisCache<>(parameters, mapper, redis);
+        }
         String cacheFilePath = directoryOfCaches.resolve(cacheName + ".json").toString();
         List<Cache<K>> createdCaches = new ArrayList<>();
         for (CacheType cacheType : hierarchyConfig) {

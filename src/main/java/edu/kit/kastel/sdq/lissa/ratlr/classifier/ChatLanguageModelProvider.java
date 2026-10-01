@@ -9,7 +9,8 @@ import java.util.Map;
 import edu.kit.kastel.sdq.lissa.ratlr.cache.CacheParameter;
 import edu.kit.kastel.sdq.lissa.ratlr.cache.classifier.ClassifierCacheParameter;
 import edu.kit.kastel.sdq.lissa.ratlr.configuration.ModuleConfiguration;
-import edu.kit.kastel.sdq.lissa.ratlr.utils.Environment;
+import edu.kit.kastel.sdq.lissa.ratlr.configuration.ProviderConfiguration;
+import edu.kit.kastel.sdq.lissa.ratlr.context.ContextStore;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
@@ -20,7 +21,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
  * This class supports multiple language model platforms (OpenAI, Ollama, Blablador)
  * and handles their configuration, including authentication and model settings.
  * <p>
- * Required environment variables for each platform:
+ * Claves de ProviderConfiguration por plataforma (entorno solo en el modo autónomo):
  * <ul>
  *   <li>OpenAI:
  *     <ul>
@@ -71,6 +72,8 @@ public class ChatLanguageModelProvider {
      */
     private final ChatLanguageModelPlatform platform;
 
+    private final ProviderConfiguration providers;
+
     /**
      * The name of the model to use.
      */
@@ -93,6 +96,12 @@ public class ChatLanguageModelProvider {
      * @param configuration The module configuration containing model settings
      */
     public ChatLanguageModelProvider(ModuleConfiguration configuration) {
+        this(configuration, new ContextStore());
+    }
+
+    /** Usa los valores de conexión de la evaluación. */
+    public ChatLanguageModelProvider(ModuleConfiguration configuration, ContextStore contextStore) {
+        this.providers = ProviderConfiguration.from(contextStore);
         this.platform = ChatLanguageModelPlatform.fromModuleConfiguration(configuration);
         this.initPlatformParameters(configuration);
     }
@@ -174,10 +183,10 @@ public class ChatLanguageModelProvider {
      * @param temperature The temperature setting for the model
      * @return A configured Ollama chat model instance
      */
-    private static ChatModel createOllamaChatModel(String model, int seed, double temperature) {
-        String host = Environment.getenv("OLLAMA_HOST");
-        String user = Environment.getenv("OLLAMA_USER");
-        String password = Environment.getenv("OLLAMA_PASSWORD");
+    private ChatModel createOllamaChatModel(String model, int seed, double temperature) {
+        String host = providers.get("OLLAMA_HOST");
+        String user = providers.get("OLLAMA_USER");
+        String password = providers.get("OLLAMA_PASSWORD");
 
         if (host == null) {
             throw new IllegalStateException("OLLAMA_HOST environment variable not set");
@@ -203,20 +212,17 @@ public class ChatLanguageModelProvider {
 
     /**
      * Creates an OpenAI chat model instance.
-     * Requires OpenAI organization ID and API key to be set in environment variables.
+     * Usa el organization ID y la API key de la configuración de proveedores.
      *
      * @param model The name of the model to use
      * @param seed The seed value for randomization
      * @param temperature The temperature setting for the model
      * @return A configured OpenAI chat model instance
-     * @throws IllegalStateException If required environment variables are not set
+     * @throws IllegalArgumentException si falta la configuración requerida
      */
-    private static ChatModel createOpenAiChatModel(String model, int seed, double temperature) {
-        String openAiOrganizationId = Environment.getenv("OPENAI_ORGANIZATION_ID");
-        String openAiApiKey = Environment.getenv("OPENAI_API_KEY");
-        if (openAiOrganizationId == null || openAiApiKey == null) {
-            throw new IllegalStateException("OPENAI_ORGANIZATION_ID or OPENAI_API_KEY environment variable not set");
-        }
+    private ChatModel createOpenAiChatModel(String model, int seed, double temperature) {
+        String openAiOrganizationId = providers.require("OPENAI_ORGANIZATION_ID");
+        String openAiApiKey = providers.require("OPENAI_API_KEY");
 
         return new LazyChatModel(() -> new OpenAiChatModel.OpenAiChatModelBuilder()
                 .modelName(model)
@@ -237,8 +243,8 @@ public class ChatLanguageModelProvider {
      * @return A configured Blablador chat model instance
      * @throws IllegalStateException If required environment variables are not set
      */
-    private static ChatModel createBlabladorChatModel(String model, int seed, double temperature) {
-        String blabladorApiKey = Environment.getenv("BLABLADOR_API_KEY");
+    private ChatModel createBlabladorChatModel(String model, int seed, double temperature) {
+        String blabladorApiKey = providers.get("BLABLADOR_API_KEY");
         if (blabladorApiKey == null) {
             throw new IllegalStateException("BLABLADOR_API_KEY environment variable not set");
         }
@@ -261,8 +267,8 @@ public class ChatLanguageModelProvider {
      * @return A configured DeepSeek chat model instance
      * @throws IllegalStateException If required environment variables are not set
      */
-    private static ChatModel createDeepSeekChatModel(String model, int seed, double temperature) {
-        String deepseekApiKey = Environment.getenv("DEEPSEEK_API_KEY");
+    private ChatModel createDeepSeekChatModel(String model, int seed, double temperature) {
+        String deepseekApiKey = providers.get("DEEPSEEK_API_KEY");
         if (deepseekApiKey == null) {
             throw new IllegalStateException("DEEPSEEK_API_KEY environment variable not set");
         }
@@ -285,9 +291,9 @@ public class ChatLanguageModelProvider {
      * @return A configured Open WebUI chat model instance
      * @throws IllegalStateException If required environment variables are not set
      */
-    private static ChatModel createOpenWebUIChatModel(String model, int seed, double temperature) {
-        String openwebuiUrl = Environment.getenv("OPENWEBUI_URL");
-        String openwebuiApiKey = Environment.getenv("OPENWEBUI_API_KEY");
+    private ChatModel createOpenWebUIChatModel(String model, int seed, double temperature) {
+        String openwebuiUrl = providers.get("OPENWEBUI_URL");
+        String openwebuiApiKey = providers.get("OPENWEBUI_API_KEY");
         if (openwebuiUrl == null || openwebuiApiKey == null) {
             throw new IllegalStateException("OPENWEBUI_URL or OPENWEBUI_API_KEY environment variable not set");
         }

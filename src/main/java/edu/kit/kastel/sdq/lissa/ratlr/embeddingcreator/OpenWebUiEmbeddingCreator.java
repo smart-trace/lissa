@@ -1,11 +1,10 @@
-/* Licensed under MIT 2025. */
+/* Licensed under MIT 2025-2026. */
 package edu.kit.kastel.sdq.lissa.ratlr.embeddingcreator;
 
 import java.time.Duration;
 
 import edu.kit.kastel.sdq.lissa.ratlr.configuration.ModuleConfiguration;
 import edu.kit.kastel.sdq.lissa.ratlr.context.ContextStore;
-import edu.kit.kastel.sdq.lissa.ratlr.utils.Environment;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
@@ -47,8 +46,8 @@ public class OpenWebUiEmbeddingCreator extends CachedEmbeddingCreator {
      */
     @Override
     protected EmbeddingModel createEmbeddingModel(String model, String... params) {
-        String url = Environment.getenvNonNull("OPENWEBUI_URL");
-        String apiKey = Environment.getenvNonNull("OPENWEBUI_API_KEY");
+        String url = providers.require("OPENWEBUI_URL");
+        String apiKey = providers.require("OPENWEBUI_API_KEY");
 
         var openWebUiEmbeddingModel = new OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder()
                 .baseUrl(url)

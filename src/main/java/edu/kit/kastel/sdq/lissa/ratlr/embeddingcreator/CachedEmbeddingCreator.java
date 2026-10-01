@@ -14,6 +14,7 @@ import com.knuddels.jtokkit.api.EncodingRegistry;
 import edu.kit.kastel.sdq.lissa.ratlr.cache.*;
 import edu.kit.kastel.sdq.lissa.ratlr.cache.embedding.EmbeddingCacheKey;
 import edu.kit.kastel.sdq.lissa.ratlr.cache.embedding.EmbeddingCacheParameter;
+import edu.kit.kastel.sdq.lissa.ratlr.configuration.ProviderConfiguration;
 import edu.kit.kastel.sdq.lissa.ratlr.context.ContextStore;
 import edu.kit.kastel.sdq.lissa.ratlr.knowledge.Element;
 import edu.kit.kastel.sdq.lissa.ratlr.utils.Futures;
@@ -42,6 +43,7 @@ abstract class CachedEmbeddingCreator extends EmbeddingCreator {
     protected final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final Cache<EmbeddingCacheKey> cache;
     private final CacheUsage cacheUsage;
+    protected final ProviderConfiguration providers;
     private final EmbeddingModel embeddingModel;
     private final String rawNameOfModel;
     private final int threads;
@@ -57,8 +59,9 @@ abstract class CachedEmbeddingCreator extends EmbeddingCreator {
      */
     protected CachedEmbeddingCreator(ContextStore contextStore, String model, int threads, String... params) {
         super(contextStore);
+        this.providers = ProviderConfiguration.from(contextStore);
         this.embeddingCacheParameter = new EmbeddingCacheParameter(model);
-        this.cache = CacheManager.getDefaultInstance().getCache(this, embeddingCacheParameter);
+        this.cache = CacheManager.from(contextStore).getCache(this, embeddingCacheParameter);
         this.cacheUsage = contextStore.getContext(CacheUsage.ID, CacheUsage.class);
         this.embeddingModel = Objects.requireNonNull(createEmbeddingModel(model, params));
         this.rawNameOfModel = model;

@@ -78,13 +78,21 @@ class RedisCache<K extends CacheKey> implements Cache<K> {
         if (Environment.getenv("REDIS_URL") != null) {
             redisUrl = Environment.getenv("REDIS_URL");
         }
+        return createRedisConnection(redisUrl);
+    }
+
+    /** Abre la conexión explícita y libera sus recursos si falla la comprobación. */
+    static RedisAdapter createRedisConnection(String redisUrl) {
         RedisAdapter redis = new RedisAdapter(RedisClient.create(redisUrl));
-        // Check if connection is working
-        if (!redis.ping()) {
+        try {
+            if (!redis.ping()) {
+                throw new IllegalStateException("No se pudo conectar con Redis");
+            }
+            return redis;
+        } catch (RuntimeException e) {
             redis.close();
-            throw new IllegalStateException("Could not connect to Redis. Make sure the container is up and running.");
+            throw e;
         }
-        return redis;
     }
 
     /**
